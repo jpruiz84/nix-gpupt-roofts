@@ -203,6 +203,9 @@ stdenv.mkDerivation {
       INSTALL_MOD_STRIP=1 \
       modules_install
 
+    echo "Copying linux-gpuvm modules to temporary directory"
+    cp -r ${linux-gpuvm}/lib/modules/${linux-gpuvm.modDirVersion}/* $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}/
+
     # Run depmod to generate modules.dep and map files
     depmod -b $tmpdir -a ${linux-gpuvm.modDirVersion}
 
