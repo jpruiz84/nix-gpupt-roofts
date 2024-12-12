@@ -189,11 +189,12 @@ stdenv.mkDerivation {
     
     echo "Copying rootfs to temporary directory"
     cp -r ${sourceRootFs}/* $tmpdir/
-    chmod -R u+w $tmpdir
-
+ 
+ 
     #echo "Creating kernel modules directory"
-    #mkdir -p $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}
-    #chmod -R 755 $tmpdir/lib/modules
+    chmod -R u+w $tmpdir
+    mkdir -p $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}
+    chmod -R 755 $tmpdir/lib/modules
 
     echo "Installing modules to temporary directory"
     make \
@@ -202,10 +203,8 @@ stdenv.mkDerivation {
       INSTALL_MOD_STRIP=1 \
       modules_install
 
-    
-
     # Run depmod to generate modules.dep and map files
-    #depmod -b $tmpdir -a ${linux-gpuvm.modDirVersion}
+    depmod -b $tmpdir -a ${linux-gpuvm.modDirVersion}
 
     # Finally, copy everything to the output directory
     mkdir -p $out
