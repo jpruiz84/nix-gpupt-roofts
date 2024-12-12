@@ -1,0 +1,6 @@
+.aider*
+.env
+*.sh
+*.json
+result
+
