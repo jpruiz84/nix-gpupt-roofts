@@ -181,10 +181,14 @@ stdenv.mkDerivation {
 
 
   buildPhase = ''
-    echo "Building modules..."
+    set -x
+    echo "Building modules in phase..."
     make \
       ARCH=${stdenv.hostPlatform.linuxArch} \
       modules
+    echo
+    echo
+    ls -lah
   '';
 
   installPhase = ''
