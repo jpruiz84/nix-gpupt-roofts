@@ -180,6 +180,13 @@ stdenv.mkDerivation {
 
 
 
+  buildPhase = ''
+    echo "Building modules..."
+    make \
+      ARCH=${stdenv.hostPlatform.linuxArch} \
+      modules
+  '';
+
   installPhase = ''
     set -x
     
@@ -190,13 +197,12 @@ stdenv.mkDerivation {
     echo "Copying rootfs to temporary directory"
     cp -r ${sourceRootFs}/* $tmpdir/
  
- 
     #echo "Creating kernel modules directory"
     chmod -R u+w $tmpdir
     mkdir -p $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}
     chmod -R 755 $tmpdir/lib/modules
 
-    echo "Installing modules to temporary directory"
+    echo "Installing built modules to temporary directory"
     make \
       ARCH=${stdenv.hostPlatform.linuxArch} \
       INSTALL_MOD_PATH=$tmpdir \
