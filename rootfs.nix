@@ -275,8 +275,7 @@ stdenv.mkDerivation {
     echo "ghaf:x:1000:" >> $tmpdir/etc/group
 
     # Create encrypted password and add to shadow
-    PASSWORD=$(openssl passwd -6 "ghaf")
-    echo "ghaf:\${PASSWORD}:19000:0:99999:7:::" >> $tmpdir/etc/shadow
+    echo "ghaf:$(openssl passwd -6 "ghaf"):19000:0:99999:7:::" >> $tmpdir/etc/shadow
 
     # Create home directory
     mkdir -p $tmpdir/home/ghaf
