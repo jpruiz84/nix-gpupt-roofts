@@ -109,6 +109,65 @@ let
   '';
   
 
+  buildModules = stdenv.mkDerivation {
+    name = "l4t-modules-${l4tVersion}";
+    inherit (linux-gpuvm) version;
+    src = source;
+
+    patches = [
+      ./patches/0001-build-fixes.patch
+      ./patches/linux-6-6-build-fixes.patch
+    ];
+
+    postUnpack = ''
+      # make kernel headers readable for the nvidia build system.
+      cp -r ${linux-gpuvm.dev} linux-dev
+      chmod -R u+w linux-dev
+
+      ln -sf ../../../../../../nvethernetrm source/nvidia-oot/drivers/net/ethernet/nvidia/nvethernet/nvethernetrm
+
+      export KERNEL_HEADERS=$(pwd)/linux-dev/lib/modules/${linux-gpuvm.modDirVersion}/build
+    '';
+
+    nativeBuildInputs = linux-gpuvm.moduleBuildDependencies ++ [ buildPackages.kmod ];
+    depsBuildBuild = [ buildPackages.stdenv.cc ];
+
+    makeFlags = [
+      "ARCH=${stdenv.hostPlatform.linuxArch}"
+      "INSTALL_MOD_PATH=${placeholder "out"}"
+      "modules"
+    ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+      "CROSS_COMPILE=${stdenv.cc}/bin/${stdenv.cc.targetPrefix}"
+    ];
+
+    CROSS_COMPILE = lib.optionalString (
+      stdenv.hostPlatform != stdenv.buildPlatform
+    ) "${stdenv.cc}/bin/${stdenv.cc.targetPrefix}";
+
+    hardeningDisable = [ "pic" ];
+
+    NIX_CFLAGS_COMPILE = "-fno-stack-protector -Wno-error=attribute-warning -I ${source}/nvidia-oot/sound/soc/tegra-virt-alt/include ${
+      lib.concatMapStrings (x: "-isystem ${x} ") (kernelIncludes linux-gpuvm.dev)
+    }";
+
+    buildPhase = ''
+      set -x
+      echo "Building modules in phase..."
+      make \
+        ARCH=${stdenv.hostPlatform.linuxArch} \
+        modules
+    '';
+
+    installPhase = ''
+      set -x
+      make \
+        ARCH=${stdenv.hostPlatform.linuxArch} \
+        INSTALL_MOD_PATH=$out \
+        INSTALL_MOD_STRIP=1 \
+        modules_install
+    '';
+  };
+
 in
 stdenv.mkDerivation {
   name = "ubuntu-rootfs-l4t-${l4tVersion}";
@@ -206,12 +265,8 @@ stdenv.mkDerivation {
     mkdir -p $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}
     chmod -R 755 $tmpdir/lib/modules
 
-    echo "Installing built modules to temporary directory"
-    make \
-      ARCH=${stdenv.hostPlatform.linuxArch} \
-      INSTALL_MOD_PATH=$tmpdir \
-      INSTALL_MOD_STRIP=1 \
-      modules_install
+    echo "Copying built modules to temporary directory"
+    cp -r ${buildModules}/lib/modules/${linux-gpuvm.modDirVersion}/* $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}/
 
     echo "Copying linux-gpuvm modules to temporary directory"
     cp -r ${linux-gpuvm}/lib/modules/${linux-gpuvm.modDirVersion}/* $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}/
