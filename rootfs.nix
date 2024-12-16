@@ -237,18 +237,7 @@ stdenv.mkDerivation {
     lib.concatMapStrings (x: "-isystem ${x} ") (kernelIncludes linux-gpuvm.dev)
   }";
 
-
-
-  buildPhase = ''
-    set -x
-    echo "Building modules in phase..."
-    make \
-      ARCH=${stdenv.hostPlatform.linuxArch} \
-      modules
-    echo
-    echo
-    ls -lah
-  '';
+  buildPhase = ''true'';
 
   installPhase = ''
     set -x
@@ -274,11 +263,32 @@ stdenv.mkDerivation {
     # Run depmod to generate modules.dep and map files
     depmod -b $tmpdir -a ${linux-gpuvm.modDirVersion}
 
+    touch $tmpdir/root/test1.txt
+
+    echo "hi from nix 2" >  $tmpdir/root/test1.txt
+
+
+    # Add user to passwd file
+    echo "ghaf:x:1000:1000:New User:/home/ghaf:/bin/bash" >> $tmpdir/etc/passwd
+
+    # Add group entry
+    echo "ghaf:x:1000:" >> $tmpdir/etc/group
+
+    # Create encrypted password and add to shadow
+    PASSWORD=$(openssl passwd -6 "ghaf")
+    echo "ghaf:${PASSWORD}:19000:0:99999:7:::" >> $tmpdir/etc/shadow
+
+    # Create home directory
+    mkdir -p $tmpdir/home/ghaf
+
+    # Copy skel files if needed
+    cp -r $tmpdir/etc/skel/. $tmpdir/home/ghaf/
+
     # Finally, copy everything to the output directory
     mkdir -p $out
 
     echo Create and format image
-    ${pkgs.qemu}/bin/qemu-img create -f raw $out/rootfs_ubuntu.img.raw 12G
+    ${pkgs.qemu}/bin/qemu-img create -f raw $out/rootfs_ubuntu.img.raw 7G
 
     ${pkgs.e2fsprogs}/bin/mkfs.ext4 -d $tmpdir/ $out/rootfs_ubuntu.img.raw
 
