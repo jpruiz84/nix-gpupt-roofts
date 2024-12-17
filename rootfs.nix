@@ -28,6 +28,9 @@ let
     url = "https://nv-tegra.nvidia.com/r/linux-nvgpu";
     rev = "jetson_36.3";
     hash = "sha256-+4xOrNtQ1emfgFyM4vqk7a7X+BoqH5+Do/wxyajLNMc=";
+    patches = [
+      ./patches/0001-gpu-add-support-for-passthrough.patch
+    ];
   };
 
   nvidiaOotSrc = fetchgit {
@@ -119,7 +122,6 @@ let
     patches = [
       ./patches/0001-build-fixes.patch
       ./patches/linux-6-6-build-fixes.patch
-      ./patches/0001-gpu-add-support-for-passthrough.patch
     ];
 
     postUnpack = ''
