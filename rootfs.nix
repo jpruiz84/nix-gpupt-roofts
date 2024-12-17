@@ -24,25 +24,56 @@ let
     sha256 = "sha256-2UhqubVeViAZiMigXL9RRpgiijZg5BNa6MRN2TuK3rQ=";
   };
 
-  nvgpuSrc = (fetchgit {
+  nvgpuSrc = fetchgit {
     url = "https://nv-tegra.nvidia.com/r/linux-nvgpu";
     rev = "jetson_36.3";
     hash = "sha256-+4xOrNtQ1emfgFyM4vqk7a7X+BoqH5+Do/wxyajLNMc=";
-  }).overrideAttrs (old: {
-    patches = [
-      ./patches/0001-gpu-add-support-for-passthrough.patch
-    ];
-  });
+  };
 
-  nvidiaOotSrc = (fetchgit {
+  nvgpuSrcPatched = stdenv.mkDerivation {
+    name = "nvgpu-patched-source";
+    src = nvgpuSrc;
+    patches = [ ./patches/0001-gpu-add-support-for-passthrough.patch ];
+    phases = [ "unpackPhase" "patchPhase" "installPhase" ];
+    installPhase = ''
+      cp -r . $out
+    '';
+  };
+
+  nvidiaOotSrc = fetchgit {
     url = "https://nv-tegra.nvidia.com/r/linux-nv-oot";
     rev = "jetson_36.3";
     hash = "sha256-l97Dq/WFOlxJVjoH63oUS5d1E+ax+aAz5CKTO678KnI=";
-  }).overrideAttrs (old: {
-    patches = [
-      ./patches/0001-Add-support-for-gpu-display-passthrough.patch
-    ];
-  });
+  };
+
+  nvidiaOotSrcPatched = stdenv.mkDerivation {
+    name = "nvidia-oot-patched-source";
+    src = nvidiaOotSrc;
+    patches = [ ./patches/0001-Add-support-for-gpu-display-passthrough.patch ];
+    phases = [ "unpackPhase" "patchPhase" "installPhase" ];
+    installPhase = ''
+      cp -r . $out
+    '';
+  };
+
+  nvdisplaySrc = fetchgit {
+    url = "https://nv-tegra.nvidia.com/r/tegra/kernel-src/nv-kernel-display-driver";
+    rev = "jetson_36.3";
+    hash = "sha256-NZGzhJCXWdogatBAsIkldJ/kP1S3DaLHhR8nDyNsmNY=";
+  };
+
+  nvdisplaySrcPatched = stdenv.mkDerivation {
+    name = "nvdisplay-patched-source";
+    src = nvdisplaySrc;
+    patches = [       
+      ./patches/0001-Add-support-for-display-passthrough.patch
+      #./patches/0001-Add-support-for-gpu-display-passthrough.patch
+      ];
+    phases = [ "unpackPhase" "patchPhase" "installPhase" ];
+    installPhase = ''
+      cp -r . $out
+    '';
+  };
 
   hwpmSrc = fetchgit {
     url = "https://nv-tegra.nvidia.com/r/linux-hwpm";
@@ -68,17 +99,6 @@ let
     hash = "sha256-NMp7UY0OlH2ddBSrUzCUSLkvnWrELhz8xH/dkV86ids=";
   };
 
-  nvdisplaySrc = (fetchgit {
-    url = "https://nv-tegra.nvidia.com/r/tegra/kernel-src/nv-kernel-display-driver";
-    rev = "jetson_36.3";
-    hash = "sha256-NZGzhJCXWdogatBAsIkldJ/kP1S3DaLHhR8nDyNsmNY=";
-  }).overrideAttrs (old: {
-    patches = [
-      ./patches/0001-Add-support-for-display-passthrough.patch
-    ];
-  });
-
-
   kernelIncludes = x: [
     "${linux-gpuvm.dev}/lib/modules/${linux-gpuvm.modDirVersion}/source/include"
     "${linux-gpuvm.dev}/lib/modules/${linux-gpuvm.modDirVersion}/source/arch/${stdenv.hostPlatform.linuxArch}/include"
@@ -97,15 +117,15 @@ let
     echo Copy modules sources
     cd Linux_for_Tegra/source/
     cp -r ${linux-gpuvm.src} kernel
-    cp -r ${nvgpuSrc} nvgpu
-    cp -r ${nvidiaOotSrc} nvidia-oot
+    cp -r ${nvgpuSrcPatched} nvgpu
+    cp -r ${nvidiaOotSrcPatched} nvidia-oot
     cp -r ${hwpmSrc} hwpm
     cp -r ${nvethernetrmSrc} nvethernetrm
     mkdir -p hardware/nvidia/t23x/nv-public
     cp -r ${t23xDtsSrc}/* hardware/nvidia/t23x/nv-public/
     mkdir -p hardware/nvidia/tegra/nv-public
     cp -r ${tegraPublicDtsSrc}/* hardware/nvidia/tegra/nv-public/
-    cp -r ${nvdisplaySrc} nvdisplay
+    cp -r ${nvdisplaySrcPatched} nvdisplay
  
     mkdir $out
  
