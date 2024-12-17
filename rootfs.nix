@@ -24,14 +24,15 @@ let
     sha256 = "sha256-2UhqubVeViAZiMigXL9RRpgiijZg5BNa6MRN2TuK3rQ=";
   };
 
-  nvgpuSrc = fetchgit {
+  nvgpuSrc = (fetchgit {
     url = "https://nv-tegra.nvidia.com/r/linux-nvgpu";
     rev = "jetson_36.3";
     hash = "sha256-+4xOrNtQ1emfgFyM4vqk7a7X+BoqH5+Do/wxyajLNMc=";
+  }).overrideAttrs (old: {
     patches = [
       ./patches/0001-gpu-add-support-for-passthrough.patch
     ];
-  };
+  });
 
   nvidiaOotSrc = fetchgit {
     url = "https://nv-tegra.nvidia.com/r/linux-nv-oot";
