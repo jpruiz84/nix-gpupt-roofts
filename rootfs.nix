@@ -5,6 +5,8 @@
   fetchgit,
   lib,
   buildPackages,
+  mkpasswd,
+  fakeroot,
   linux-gpuvm,
   pkgs
 }:
@@ -210,7 +212,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = linux-gpuvm.moduleBuildDependencies ++ [ buildPackages.kmod pkgs.whois ];
 
   # some calls still go to `gcc` in the build
-  depsBuildBuild = [ buildPackages.stdenv.cc ];
+  depsBuildBuild = [ buildPackages.stdenv.cc mkpasswd fakeroot];
 
 
 
@@ -272,10 +274,10 @@ stdenv.mkDerivation {
 
 
     # Generate password hash
-    HASH=$(${pkgs.whois}/bin/mkpasswd -m sha-512 "root")
+    HASH=$(mkpasswd -m sha-512 "root")
 
     # Update the root entry in shadow file
-    sed -i "s|^root:[^:]*|root:$HASH|" /etc/shadow
+    sed -i "s|^root:[^:]*|root:$HASH|" $ROOTFS/etc/shadow
 
 
     # Add user to passwd file
@@ -299,18 +301,21 @@ stdenv.mkDerivation {
     chmod 755 -R $ROOTFS/home/ghaf
 
     # Extract JetsonLinux to ghaf home folder
-    cd $ROOTFS/home/ghaf
+    cd $ROOTFS/root
     tar -xf ${jetsonLinux}
 
     # Finally, copy everything to the output directory
     mkdir -p $out
 
     echo Create and format image
-    ${pkgs.qemu}/bin/qemu-img create -f raw $out/rootfs_ubuntu.img.raw 8G
+    ${pkgs.qemu}/bin/qemu-img create -f raw $out/rootfs_ubuntu.img.raw 12G
 
-    ${pkgs.e2fsprogs}/bin/mkfs.ext4 -E root_owner=0:0 -d $ROOTFS/ $out/rootfs_ubuntu.img.raw
+    #chown -R root:root $ROOTFS
+    #${pkgs.e2fsprogs}/bin/mkfs.ext4 -E root_owner=0:0 -d $ROOTFS/ $out/rootfs_ubuntu.img.raw
 
-    chmod u+w $out/rootfs_ubuntu.img.raw
+    fakeroot -- sh -c "chown -R root:root $ROOTFS && ${pkgs.e2fsprogs}/bin/mkfs.ext4 -d $ROOTFS $out/rootfs_ubuntu.img.raw"
+
+    chmod 755 $out/rootfs_ubuntu.img.raw
 
     cp ${linux-gpuvm}/Image $out
   '';
