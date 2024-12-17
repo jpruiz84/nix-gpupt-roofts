@@ -119,6 +119,7 @@ let
     patches = [
       ./patches/0001-build-fixes.patch
       ./patches/linux-6-6-build-fixes.patch
+      ./patches/0001-gpu-add-support-for-passthrough.patch
     ];
 
     postUnpack = ''
