@@ -34,11 +34,15 @@ let
     ];
   });
 
-  nvidiaOotSrc = fetchgit {
+  nvidiaOotSrc = (fetchgit {
     url = "https://nv-tegra.nvidia.com/r/linux-nv-oot";
     rev = "jetson_36.3";
     hash = "sha256-l97Dq/WFOlxJVjoH63oUS5d1E+ax+aAz5CKTO678KnI=";
-  };
+  }).overrideAttrs (old: {
+    patches = [
+      ./patches/0001-Add-support-for-gpu-display-passthrough.patch
+    ];
+  });
 
   hwpmSrc = fetchgit {
     url = "https://nv-tegra.nvidia.com/r/linux-hwpm";
@@ -64,11 +68,15 @@ let
     hash = "sha256-NMp7UY0OlH2ddBSrUzCUSLkvnWrELhz8xH/dkV86ids=";
   };
 
-  nvdisplaySrc = fetchgit {
+  nvdisplaySrc = (fetchgit {
     url = "https://nv-tegra.nvidia.com/r/tegra/kernel-src/nv-kernel-display-driver";
     rev = "jetson_36.3";
     hash = "sha256-NZGzhJCXWdogatBAsIkldJ/kP1S3DaLHhR8nDyNsmNY=";
-  };
+  }).overrideAttrs (old: {
+    patches = [
+      ./patches/0001-Add-support-for-display-passthrough.patch
+    ];
+  });
 
 
   kernelIncludes = x: [
