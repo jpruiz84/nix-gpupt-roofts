@@ -207,7 +207,7 @@ stdenv.mkDerivation {
   '';
 
 
-  nativeBuildInputs = linux-gpuvm.moduleBuildDependencies ++ [ buildPackages.kmod ];
+  nativeBuildInputs = linux-gpuvm.moduleBuildDependencies ++ [ buildPackages.kmod pkgs.whois ];
 
   # some calls still go to `gcc` in the build
   depsBuildBuild = [ buildPackages.stdenv.cc ];
@@ -272,7 +272,7 @@ stdenv.mkDerivation {
 
 
     # Generate password hash
-    HASH=$(mkpasswd -m sha-512 "root")
+    HASH=$(${pkgs.whois}/bin/mkpasswd -m sha-512 "root")
 
     # Update the root entry in shadow file
     sed -i "s|^root:[^:]*|root:$HASH|" /etc/shadow
