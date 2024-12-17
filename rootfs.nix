@@ -14,12 +14,12 @@ let
 
   jetsonLinux = fetchurl {
     url = "https://developer.nvidia.com/downloads/embedded/l4t/r36_release_v3.0/release/jetson_linux_r36.3.0_aarch64.tbz2";
-    sha256 = "sha256-tGVlQIMedLkR4lBtLFZ8uxRv3dWUK2dfgML2ENakD0M="; # TODO: Add correct sha256
+    sha256 = "sha256-tGVlQIMedLkR4lBtLFZ8uxRv3dWUK2dfgML2ENakD0M=";
   };
 
   tegraRootfs = fetchurl {
     url = "https://developer.nvidia.com/downloads/embedded/l4t/r36_release_v3.0/release/tegra_linux_sample-root-filesystem_r36.3.0_aarch64.tbz2";
-    sha256 = "sha256-2UhqubVeViAZiMigXL9RRpgiijZg5BNa6MRN2TuK3rQ="; # TODO: Add correct sha256
+    sha256 = "sha256-2UhqubVeViAZiMigXL9RRpgiijZg5BNa6MRN2TuK3rQ=";
   };
 
   nvgpuSrc = fetchgit {
@@ -243,53 +243,74 @@ stdenv.mkDerivation {
     set -x
     
     # Create temporary directory for building the rootfs
-    tmpdir=$(mktemp -d)
-    chmod 755 $tmpdir
+    #ROOTFS=$(mktemp -d)
+    #chmod 755 $ROOTFS
     
+    mkdir rootfs
+    ROOTFS=$(pwd)/rootfs
+
     echo "Copying rootfs to temporary directory"
-    cp -r ${sourceRootFs}/* $tmpdir/
+    cp -r ${sourceRootFs}/* $ROOTFS/
  
     #echo "Creating kernel modules directory"
-    chmod -R u+w $tmpdir
-    mkdir -p $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}
-    chmod -R 755 $tmpdir/lib/modules
+    chmod -R u+w $ROOTFS
+    mkdir -p $ROOTFS/lib/modules/${linux-gpuvm.modDirVersion}
+    chmod -R 755 $ROOTFS/lib/modules
 
     echo "Copying built modules to temporary directory"
-    cp -r ${buildModules}/lib/modules/${linux-gpuvm.modDirVersion}/* $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}/
+    cp -r ${buildModules}/lib/modules/${linux-gpuvm.modDirVersion}/* $ROOTFS/lib/modules/${linux-gpuvm.modDirVersion}/
 
     echo "Copying linux-gpuvm modules to temporary directory"
-    cp -r ${linux-gpuvm}/lib/modules/${linux-gpuvm.modDirVersion}/* $tmpdir/lib/modules/${linux-gpuvm.modDirVersion}/
+    cp -r ${linux-gpuvm}/lib/modules/${linux-gpuvm.modDirVersion}/* $ROOTFS/lib/modules/${linux-gpuvm.modDirVersion}/
 
     # Run depmod to generate modules.dep and map files
-    depmod -b $tmpdir -a ${linux-gpuvm.modDirVersion}
+    depmod -b $ROOTFS -a ${linux-gpuvm.modDirVersion}
 
-    touch $tmpdir/root/test1.txt
+    touch $ROOTFS/root/test1.txt
 
-    echo "hi from nix 2" >  $tmpdir/root/test1.txt
+    echo "hi from nix 2" >  $ROOTFS/root/test1.txt
+
+
+    # Generate password hash
+    HASH=$(mkpasswd -m sha-512 "root")
+
+    # Update the root entry in shadow file
+    sed -i "s|^root:[^:]*|root:$HASH|" /etc/shadow
 
 
     # Add user to passwd file
-    echo "ghaf:x:1000:1000:New User:/home/ghaf:/bin/bash" >> $tmpdir/etc/passwd
+    echo "ghaf:x:1000:1000:New User:/home/ghaf:/bin/bash" >> $ROOTFS/etc/passwd
 
     # Add group entry
-    echo "ghaf:x:1000:" >> $tmpdir/etc/group
+    echo "ghaf:x:1000:" >> $ROOTFS/etc/group
 
     # Create encrypted password and add to shadow
-    echo "ghaf:$(openssl passwd -6 "ghaf"):19000:0:99999:7:::" >> $tmpdir/etc/shadow
+    echo "ghaf:$(openssl passwd -6 "ghaf"):19000:0:99999:7:::" >> $ROOTFS/etc/shadow
 
     # Create home directory
-    mkdir -p $tmpdir/home/ghaf
+    mkdir -p $ROOTFS/home/ghaf
 
     # Copy skel files if needed
-    cp -r $tmpdir/etc/skel/. $tmpdir/home/ghaf/
+    cp -r $ROOTFS/etc/skel/. $ROOTFS/home/ghaf/
+
+    chmod 644 $ROOTFS/etc/passwd
+    chmod 644 $ROOTFS/etc/group
+    chmod 600 $ROOTFS/etc/shadow
+    chmod 755 -R $ROOTFS/home/ghaf
+
+    # Extract JetsonLinux to ghaf home folder
+    cd $ROOTFS/home/ghaf
+    tar -xf ${jetsonLinux}
 
     # Finally, copy everything to the output directory
     mkdir -p $out
 
     echo Create and format image
-    ${pkgs.qemu}/bin/qemu-img create -f raw $out/rootfs_ubuntu.img.raw 7G
+    ${pkgs.qemu}/bin/qemu-img create -f raw $out/rootfs_ubuntu.img.raw 8G
 
-    ${pkgs.e2fsprogs}/bin/mkfs.ext4 -d $tmpdir/ $out/rootfs_ubuntu.img.raw
+    ${pkgs.e2fsprogs}/bin/mkfs.ext4 -E root_owner=0:0 -d $ROOTFS/ $out/rootfs_ubuntu.img.raw
+
+    chmod u+w $out/rootfs_ubuntu.img.raw
 
     cp ${linux-gpuvm}/Image $out
   '';
